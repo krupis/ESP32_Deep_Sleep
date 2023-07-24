@@ -12,12 +12,15 @@
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 
+#include "esp_pm.h"
 #include "esp_sleep.h"
 #include "esp_log.h"
 #include "driver/rtc_io.h"
 #include "soc/rtc.h"
 #include "nvs_flash.h"
 #include "nvs.h"
+
+
 
 #define GPIO_OUTPUT_BUILTIN_LED 2
 
@@ -40,13 +43,20 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(err);
 
-    nvs_handle_t nvs_handle;
-    err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
-    if (err != ESP_OK) {
-        printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-    } else {
-        printf("Open NVS done\n");
-    }
+    #if CONFIG_PM_ENABLE
+        // Configure dynamic frequency scaling:
+        // maximum and minimum frequencies are set in sdkconfig,
+        // automatic light sleep is enabled if tickless idle support is enabled.
+        esp_pm_config_esp32_t pm_config = {
+                .max_freq_mhz = 80,
+                .min_freq_mhz = 10,
+    #if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+                .light_sleep_enable = true
+    #endif
+        };
+        ESP_ERROR_CHECK( esp_pm_configure(&pm_config) );
+    #endif // CONFIG_PM_ENABLE
+
 
     /* Print chip information */
     esp_chip_info_t chip_info;
@@ -67,12 +77,12 @@ void app_main(void)
     }
 
 
-    const int wakeup_time_sec = 20;
+    const int wakeup_time_sec = 60;
     printf("Enabling timer wakeup, %ds\n", wakeup_time_sec);
     ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(wakeup_time_sec * 1000000));
   
     get_wake_up_reason();
-    printf("Going to sleep in 5 second \n");
+    printf("Going to sleep in 3 second \n");
 
 
   // Turn off and keep off the built-in led during deep sleep
