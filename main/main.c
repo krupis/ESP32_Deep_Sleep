@@ -20,10 +20,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 
-
-
 #define GPIO_OUTPUT_BUILTIN_LED 2
-
 #define GPIO_BUILTIN_LED_PIN_SEL   ((1ULL<<GPIO_OUTPUT_BUILTIN_LED) )
 
 
@@ -42,6 +39,10 @@ void app_main(void)
         err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(err);
+
+    configure_gpio();
+    gpio_set_level(GPIO_OUTPUT_BUILTIN_LED, 0);
+    gpio_hold_en(GPIO_OUTPUT_BUILTIN_LED);
 
     #if CONFIG_PM_ENABLE
         // Configure dynamic frequency scaling:
@@ -77,23 +78,18 @@ void app_main(void)
     }
 
 
-    const int wakeup_time_sec = 60;
+    const int wakeup_time_sec = 80;
     printf("Enabling timer wakeup, %ds\n", wakeup_time_sec);
     ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(wakeup_time_sec * 1000000));
-  
     get_wake_up_reason();
-    printf("Going to sleep in 3 second \n");
 
+    printf("Going to sleep in 5 second \n");
 
-  // Turn off and keep off the built-in led during deep sleep
     configure_gpio();
     gpio_set_level(GPIO_OUTPUT_BUILTIN_LED, 0);
     gpio_hold_en(GPIO_OUTPUT_BUILTIN_LED);
     gpio_deep_sleep_hold_en();
-
-
-
-
+  
     vTaskDelay(5000/portTICK_PERIOD_MS);
     esp_deep_sleep_start();
 
