@@ -59,28 +59,9 @@ void app_main(void)
     #endif // CONFIG_PM_ENABLE
 
 
-    /* Print chip information */
-    esp_chip_info_t chip_info;
-    uint32_t flash_size;
-    esp_chip_info(&chip_info);
-    printf("This is %s chip with %d CPU core(s), WiFi%s%s, ",
-           CONFIG_IDF_TARGET,
-           chip_info.cores,
-           (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
-           (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
-
-    unsigned major_rev = chip_info.revision / 100;
-    unsigned minor_rev = chip_info.revision % 100;
-    printf("silicon revision v%d.%d, ", major_rev, minor_rev);
-    if(esp_flash_get_size(NULL, &flash_size) != ESP_OK) {
-        printf("Get flash size failed");
-        return;
-    }
 
 
-    const int wakeup_time_sec = 80;
-    printf("Enabling timer wakeup, %ds\n", wakeup_time_sec);
-    ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(wakeup_time_sec * 1000000));
+    const int wakeup_time_sec = 60;
     get_wake_up_reason();
 
     printf("Going to sleep in 5 second \n");
@@ -89,8 +70,29 @@ void app_main(void)
     gpio_set_level(GPIO_OUTPUT_BUILTIN_LED, 0);
     gpio_hold_en(GPIO_OUTPUT_BUILTIN_LED);
     gpio_deep_sleep_hold_en();
+
+
+
   
     vTaskDelay(5000/portTICK_PERIOD_MS);
+
+
+    #if CONFIG_PM_ENABLE
+        // Configure dynamic frequency scaling:
+        // maximum and minimum frequencies are set in sdkconfig,
+        // automatic light sleep is enabled if tickless idle support is enabled.
+        esp_pm_config_esp32_t pm_config2 = {
+                .max_freq_mhz = 80,
+                .min_freq_mhz = 10,
+    #if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+                .light_sleep_enable = false
+    #endif
+        };
+        ESP_ERROR_CHECK( esp_pm_configure(&pm_config2) );
+    #endif // CONFIG_PM_ENABLE
+
+    printf("Enabling timer wakeup, %ds\n", wakeup_time_sec);
+    ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(wakeup_time_sec * 1000000));
     esp_deep_sleep_start();
 
 
